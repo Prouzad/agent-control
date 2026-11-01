@@ -1,0 +1,686 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Dark "mission control" is the default; light "lab" is opt-in via the theme toggle */
+:root {
+  color-scheme: dark;
+  --bg: #05070d;
+  --surface: rgb(15 21 37 / 0.72);
+  --surface-solid: #0d1322;
+  --surface-2: rgb(255 255 255 / 0.05);
+  --border: rgb(148 163 255 / 0.14);
+  --border-strong: rgb(148 163 255 / 0.28);
+  --text: #e8ecff;
+  --text-2: #a9b2d6;
+  --text-3: #727ca5;
+  --accent: #22d3ee;
+  --accent-2: #a78bfa;
+  --accent-soft: rgb(34 211 238 / 0.12);
+  --on-accent: #031018;
+  --glow: rgb(34 211 238 / 0.35);
+  --grid: rgb(148 163 255 / 0.06);
+  --blob-1: rgb(34 211 238 / 0.16);
+  --blob-2: rgb(167 139 250 / 0.16);
+  --shadow: 0 18px 40px -24px rgb(0 0 0 / 0.9);
+
+  /* Categorical series, fixed order (validated dark steps) */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-other: #6b6a65;
+
+  --good: #34d399;
+  --warning: #fbbf24;
+  --critical: #f87171;
+
+  --robot-body: #d9e1ff;
+  --robot-shade: #9aa6d6;
+  --robot-screen: #0a1020;
+  --robot-outline: transparent;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eef2fb;
+  --surface: rgb(255 255 255 / 0.78);
+  --surface-solid: #ffffff;
+  --surface-2: rgb(15 23 42 / 0.045);
+  --border: rgb(30 41 99 / 0.12);
+  --border-strong: rgb(30 41 99 / 0.24);
+  --text: #0b1020;
+  --text-2: #3d4766;
+  --text-3: #636d8d;
+  --accent: #0e7490;
+  --accent-2: #7c3aed;
+  --accent-soft: rgb(14 116 144 / 0.1);
+  --on-accent: #ffffff;
+  --glow: rgb(14 116 144 / 0.25);
+  --grid: rgb(30 41 99 / 0.06);
+  --blob-1: rgb(34 211 238 / 0.22);
+  --blob-2: rgb(167 139 250 / 0.2);
+  --shadow: 0 18px 40px -26px rgb(30 41 99 / 0.45);
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-other: #a3a29c;
+
+  --good: #047857;
+  --warning: #b45309;
+  --critical: #dc2626;
+
+  --robot-body: #f4f6fd;
+  --robot-shade: #a9b4d8;
+  --robot-screen: #0f172a;
+  /* White robots on white cards need an edge */
+  --robot-outline: #8f9bc4;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-unbounded);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+/* Backdrop: a faint grid fading out from the top plus two slowly drifting glows */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+}
+
+body::after {
+  background:
+    radial-gradient(40vw 40vw at 15% 10%, var(--blob-1), transparent 60%),
+    radial-gradient(35vw 35vw at 85% 30%, var(--blob-2), transparent 60%);
+  /* The glow moves a fraction of a pixel per frame: 10 steps a second look the same as 60 and
+     re-blur the glass cards above it six times less often */
+  animation: drift 24s steps(240) infinite alternate;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(-3vw, 4vh, 0) scale(1.08);
+  }
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Panel over the backdrop; the spotlight follows the cursor through --mx/--my set by
+   SpotlightTracker. No backdrop-filter: with any animation on the page (robots, the drifting
+   glow) the browser re-blurred every panel each frame, about a third of a CPU core, and the
+   translucent surface over the already soft backdrop looks the same without it */
+.glass {
+  background:
+    radial-gradient(
+      420px circle at var(--mx, -999px) var(--my, -999px),
+      color-mix(in oklab, var(--accent) 9%, transparent),
+      transparent 45%
+    ),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    var(--shadow);
+}
+
+a.glass,
+.glass--solid {
+  background: var(--surface-solid);
+}
+
+.glass-hover {
+  transition:
+    border-color 0.2s,
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+a.glass:hover,
+.glass-hover:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent),
+    0 18px 40px -20px var(--glow);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 20px -8px var(--glow);
+  transition:
+    filter 0.2s,
+    box-shadow 0.2s,
+    transform 0.1s;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 8px 28px -6px var(--glow);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, var(--text), var(--accent) 60%, var(--accent-2));
+  background-clip: text;
+  color: transparent;
+}
+
+/* Page enter */
+.page-enter {
+  animation: page-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Live status dot */
+.pulse-dot {
+  position: relative;
+}
+
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: ping 1.8s ease-out infinite;
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Conveyor belt stripes for a running pipeline stage */
+.belt {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklab, var(--accent) 55%, transparent) 0 8px,
+    color-mix(in oklab, var(--accent-2) 30%, transparent) 8px 16px
+  );
+  background-size: 22.6px 22.6px;
+  animation: belt 0.9s linear infinite;
+}
+
+@keyframes belt {
+  to {
+    background-position: 22.6px 0;
+  }
+}
+
+/* ---------- Robots ---------- */
+.robot {
+  --c: var(--team, var(--accent));
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.robot svg,
+.robot > .r-all {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Its own layer: the robot's moving parts repaint only the robot, not the glass card around it */
+.robot > .r-all {
+  display: block;
+  will-change: transform;
+}
+
+.robot .r-eye,
+.robot .r-chest,
+.robot .r-bulb {
+  fill: var(--c);
+  filter: drop-shadow(0 0 3px var(--c));
+}
+
+.robot .r-body {
+  fill: var(--robot-body);
+  stroke: var(--robot-outline);
+  stroke-width: 1;
+}
+
+.robot .r-shade {
+  fill: var(--robot-shade);
+}
+
+.robot .r-screen {
+  fill: var(--robot-screen);
+}
+
+.robot .r-line {
+  stroke: var(--c);
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2px var(--c));
+}
+
+.robot .r-eyes,
+.robot .r-arm-l,
+.robot .r-arm-r,
+.robot .r-bulb {
+  transform-box: fill-box;
+}
+
+.robot .r-eyes {
+  transform-origin: center;
+}
+
+.robot .r-arm-l {
+  transform-origin: 100% 0%;
+}
+
+.robot .r-arm-r {
+  transform-origin: 0% 0%;
+}
+
+.robot .r-bulb {
+  transform-origin: center;
+}
+
+/* idle: hover in place and blink */
+.robot--idle .r-all {
+  animation: float 3.6s ease-in-out infinite;
+}
+
+.robot--idle .r-eyes {
+  animation: blink 5s infinite;
+}
+
+/* working: quicker bob, eyes scan, antenna and chest pulse, arms tap */
+.robot--working .r-all {
+  animation: float 1.6s ease-in-out infinite;
+}
+
+.robot--working .r-eyes {
+  animation: scan 1.8s ease-in-out infinite;
+}
+
+.robot--working .r-bulb,
+.robot--working .r-chest {
+  animation: glow 0.9s ease-in-out infinite alternate;
+}
+
+.robot--working .r-arm-l {
+  animation: tap 0.5s ease-in-out infinite alternate;
+}
+
+.robot--working .r-arm-r {
+  animation: tap 0.5s ease-in-out 0.25s infinite alternate;
+}
+
+/* waiting: raised hand waving, alert bubble */
+.robot--waiting .r-arm-r {
+  animation: wave 1s ease-in-out infinite;
+}
+
+.robot--waiting .r-alert {
+  animation: bob 1s ease-in-out infinite;
+}
+
+.robot--waiting .r-eyes {
+  animation: blink 2.4s infinite;
+}
+
+/* error: glitch */
+.robot--error {
+  --c: var(--critical);
+}
+
+.robot--error .r-all {
+  animation: glitch 2.4s steps(1) infinite;
+}
+
+/* done: little happy hop */
+.robot--done .r-all {
+  animation: hop 2.8s ease-in-out infinite;
+}
+
+.robot--offline {
+  --c: var(--text-3);
+  opacity: 0.65;
+}
+
+.robot--offline .r-eye,
+.robot--offline .r-chest,
+.robot--offline .r-bulb {
+  filter: none;
+}
+
+/* hovering a card wakes its robot up */
+.group:hover .robot--idle .r-arm-r,
+.group:hover .robot--offline .r-arm-r {
+  animation: wave 1s ease-in-out 2;
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes glow {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@keyframes tap {
+  to {
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: rotate(-150deg);
+  }
+  50% {
+    transform: rotate(-115deg);
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-4px);
+  }
+  90% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes glitch {
+  0%,
+  86%,
+  100% {
+    transform: translate(0, 0);
+  }
+  88% {
+    transform: translate(-1.5px, 0.5px);
+  }
+  90% {
+    transform: translate(1.5px, -0.5px);
+  }
+  92% {
+    transform: translate(-0.5px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Team colors: robots light their eyes with them, office zones tint their floor */
+[data-team='leadership'] {
+  --team: #fbbf24;
+}
+[data-team='analysis'] {
+  --team: #2dd4bf;
+}
+[data-team='design'] {
+  --team: #f472b6;
+}
+[data-team='frontend'] {
+  --team: #22d3ee;
+}
+[data-team='backend'] {
+  --team: #a78bfa;
+}
+[data-team='mobile'] {
+  --team: #4ade80;
+}
+[data-team='platform'] {
+  --team: #fb923c;
+}
+[data-team='qa'] {
+  --team: #a3e635;
+}
+[data-team='security'] {
+  --team: #f87171;
+}
+[data-team='review'] {
+  --team: #60a5fa;
+}
+[data-team='release'] {
+  --team: #cbd5e1;
+}
+[data-team='data'] {
+  --team: #e879f9;
+}
+.robot.robot--error {
+  --c: var(--critical);
+}
+.robot.robot--offline {
+  --c: var(--text-3);
+}
+
+/* ---------- 3D office overlays ---------- */
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.8);
+  }
+}
+
+.zzz span {
+  position: absolute;
+  font-weight: 700;
+  color: var(--text-3);
+  animation: zzz 3s ease-in infinite;
+  opacity: 0;
+}
+
+.zzz span:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.zzz span:nth-child(3) {
+  animation-delay: 2s;
+}
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(14px, -26px) scale(1.2);
+  }
+}
+
+.desk-plate {
+  display: block;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  background: #f8fafc;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+.bubble3d {
+  display: block;
+  width: max-content;
+  max-width: 14rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.8rem;
+  border: 2px solid var(--accent);
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.3;
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.5);
+  animation: bubble-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.bubble3d--gate {
+  border-color: #f59e0b;
+  font-weight: 600;
+  animation:
+    bubble-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1),
+    gate-nudge 1.2s ease-in-out infinite;
+}
+
+@keyframes gate-nudge {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* ---------- Select popup ---------- */
+.select-pop {
+  background: var(--surface-solid);
+  animation: select-in 0.12s ease-out;
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* ---------- Layout safety ---------- */
+/* Grid columns may shrink below their content, and long paths or commands wrap instead of
+   pushing the page sideways; ordinary words still break only at spaces */
+main .grid > * {
+  min-width: 0;
+}
+
+main {
+  overflow-wrap: anywhere;
+}
+
+/* Tables scroll sideways inside their own wrapper instead of squeezing every cell */
+main table {
+  overflow-wrap: normal;
+}
